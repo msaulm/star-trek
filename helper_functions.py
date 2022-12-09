@@ -21,8 +21,11 @@ def saveJson(dict_:dict, fpath:str):
         json.dump(dict_, outfile)
 
 
-def getTopicModelPath(name:str):
-    return os.path.join(PATHS['topic_models'], f'topic_model_{name}')
+def getTopicModelPath(series_name:str):
+    return os.path.join(PATHS['topic_models'], f'topic_model_{series_name}')
 
-def getCustomLabelPath(name:str):
-    return os.path.join(PATHS['topic_models'], f'custom_labels_{name}.json')
+def getCustomLabelPath(series_name:str):
+    return os.path.join(PATHS['topic_models'], f'custom_labels_{series_name}.json')
+
+def getCharacterTopics(series_name:str, char_name:str):
+    return os.path.join(PATHS['topic_models'], f'character_topic_{series_name}_{char_name}.csv')
