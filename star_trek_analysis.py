@@ -1,4 +1,4 @@
-#%%
+# %%
 # load libraries
 from bertopic import BERTopic
 from helper_functions import PATHS
@@ -14,7 +14,8 @@ import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-#%%
+
+# %%
 # load data
 '''
     Star Trek The Original Series (TOS) (1966)
@@ -29,7 +30,8 @@ series_order = ['TOS','TAS','TNG','DS9','VOY','ENT']
 series_years = [1966, 1973, 1987, 1993, 1995, 2001] #from wikipedia https://en.wikipedia.org/wiki/Star_Trek
 show_name = 'STARTREK'
 series_lines_dict = loadJson(PATHS['series_lines'])
-#%%
+
+# %%
 # functions
 def loadTopicModels(series_lines_dict:dict)->dict:
     """Fits a BertTopic model to each series' corpus. The models are each saved for easy retrieval when the code is run again
@@ -41,7 +43,7 @@ def loadTopicModels(series_lines_dict:dict)->dict:
     Returns:
         topic_models: topic_models = {series_name: bert_topic_model}
     """    
-    # the assumption is that each series takles different themes and topics
+    # the assumption is that each series takles different themes and topics, so modelling is done on a series basis.
     topic_models = {}
     for series, series_dict in series_lines_dict.items():
         series_corpus = []
@@ -168,12 +170,10 @@ def getCustomTopicLabels(topic_models:dict)->dict:
     for series in topic_models.keys() :
         custom_label_path = getCustomLabelPath(series)
         if os.path.exists(custom_label_path):
-            print(f'loading custom label {series}')
             custom_labels = loadJson(custom_label_path)
             custom_labels = {int(k): v for k,v in custom_labels.items()}
             custom_label_collection[series] = custom_labels
         else:
-            print(f'processing custom label {series}')
             print(topic_models[series].get_topic_info())
             custom_labels = {}
             for i in range(0,10):
@@ -300,47 +300,82 @@ def plotTopicsForEachSeries(series_topic_labels:dict):
         topic_map.loc[series_topic_labels[series],series] = 1
     topic_map[topic_map.isna()] = 0
     topic_map = topic_map.astype(float)
-    fig, ax = plt.subplots(1)
+    fig, ax = plt.subplots(1,figsize=(20, 10))
     topic_map = topic_map.sort_values(list(topic_map.columns), ascending=False)
-    sns.heatmap(  topic_map, ax=ax, center=0,
-                    square=True, linewidths=.5,
-                    yticklabels=topic_map.index)
+    _ = sns.heatmap(    topic_map, ax=ax, center=0,
+                        square=True, linewidths=.5,
+                        yticklabels=topic_map.index)
     return fig,ax
-#%%
+
+# %%
 # analyse character stats for line count, verbosity, derive main characters
 series_character_lines = analyseCharacterLines(series_lines_dict)
 series_character_stats_dict = analyseCharacterVerbosity(series_character_lines)
 
-#%%
+# %% [markdown]
+# Who has the most lines? Who are the top 5?
+
+# %%
 print("In decreasing order of line count")
 for series, series_verbosity in series_character_stats_dict.items():
     print(f"{series}: {series_verbosity['top_5_by_lines']}")
 
-#%%
+# %% [markdown]
+# Who is the most verbose?
+
+# %%
 print("Most verbose by word count")
 for series, series_verbosity in series_character_stats_dict.items():
     print(f"{series}: {series_verbosity['most_verbose_by_word_count']}")
 
-#%%
+# %%
 print("Most verbose by words per line")
 for series, series_verbosity in series_character_stats_dict.items():
     print(f"{series}: {series_verbosity['most_verbose_by_line_normalized_word_count']}")
 
-#%%
-print("Main characters are those that appearded in the most episodes and had the highest word counts (limited to 5)")
+# %% [markdown]
+# What are the main topics each main character talks about?
+# 
+# Main characters were defined as those that appearded in the most episodes and had the highest word counts (limited to 5)
+
+# %%
 for series, series_verbosity in series_character_stats_dict.items():
     print(f"{series}: {series_verbosity['most_episode_and_word_count']}")
 
-#%%
-# plot topics for each series
+# %% [markdown]
+# What did they talk about?
+
+# %%
 topic_models = loadTopicModels(series_lines_dict)
 custom_label_collection = getCustomTopicLabels(topic_models)
+main_character_main_topics = getMainCharacterTopics(series_character_stats_dict, topic_models, series_character_lines, custom_label_collection)
+
+# %%
+for series, series_maincharacters in main_character_main_topics.items():
+    df_index = series_maincharacters.keys()
+    df_col = [series]
+    mainchar_topics_df = pd.DataFrame(index=df_index, columns=df_col)
+    for character, character_topics in series_maincharacters.items():   
+        mainchar_topics_df.loc[character, series] = character_topics[0]
+    display(mainchar_topics_df)
+
+# %%
+
+
+# %% [markdown]
+# How do the topics change throughout the series?
+# 
+# One noticable change is the discussion of starfleet, which starts in The Next Generation(TNG). Food is also discussed more often in the latest two series. Females are a topic of discussion pretty regularly through out the show, with the exception of the animated series and deep space 9. 
+
+# %%
+# plot topics for each series
 series_topic_labels = getTopicsForEachSeriesBasedOnSeriesTopicModel(topic_models, custom_label_collection)
-plotTopicsForEachSeries(series_topic_labels)
-#%%
-'''
-Interesting thing to analyse is does the show get less verbose as time goes by. Shorter attention spans. Or do sentence lengths get shorter.
-'''
+_,_ = plotTopicsForEachSeries(series_topic_labels)
+
+# %% [markdown]
+# Interesting thing to analyse is does the show get less verbose as time goes by. Shorter attention spans. Or do sentence lengths get shorter.
+
+# %%
 show_characteristics={}
 for series, series_dict in series_lines_dict.items():
     n_cw = 0
@@ -362,10 +397,13 @@ ax.set_xlabel('series'.title())
 ax.set_xticklabels([series_order[i]+f'\n{series_years[i]}' for i in range(0, len(series_order))])
 plt.tight_layout()
 
-#%%
-'''
-What I would like to do with more time. In tv, characters tend to evolve to a more extreme version of themselves as writers
-concentrate on empahiszing their characteristics. What i would like to do is see if the varaince of topics they discuss is reduced
-as they progress through the series. Another thing would be to analyse the sentiment of each character through out the episode. Is 
-there a pattern of happy, not happy, then happy that shows an arch of some sort ? 
-'''
+# %% [markdown]
+# The plot indicates verbosity does decrease with the shows progression. We could analyse the length time of each episode and see if the action time relative to talk time has increased, which would give further creadance to the hypothesis that show creators are catering to shorter attention spans.
+
+# %% [markdown]
+# What I would like to do with more time. In tv, characters tend to evolve to a more extreme version of themselves as writers
+# concentrate on empahiszing their characteristics. What i would like to do is see if the varaince of topics they discuss is reduced
+# as they progress through the series. Another thing would be to analyse the sentiment of each character through out the episode. Is 
+# there a pattern of happy, not happy, then happy that shows an arch of some sort ? 
+
+
