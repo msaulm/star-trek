@@ -9,11 +9,11 @@ from helper_functions import getCustomLabelPath
 from helper_functions import getCharacterTopics
 from helper_functions import getSeriesTopics
 import pandas as pd
-import flatdict
 import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from IPython.display import display
 
 # %%
 # load data
@@ -56,7 +56,7 @@ def loadTopicModels(series_lines_dict:dict)->dict:
         if os.path.exists(topic_model_path):
             topic_model = BERTopic.load(topic_model_path)
         else:
-            topic_model = BERTopic()
+            topic_model = BERTopic(nr_topics="auto")
             topic_model.fit_transform(series_corpus)
             topic_model.save(topic_model_path)
         topic_models[series] = topic_model
@@ -73,7 +73,7 @@ def loadTopicModels(series_lines_dict:dict)->dict:
     if os.path.exists(topic_model_path):
         topic_model = BERTopic.load(topic_model_path)
     else:
-        topic_model = BERTopic()
+        topic_model = BERTopic(nr_topics="auto")
         topic_model.fit_transform(show_corpus)
         topic_model.save(topic_model_path)
     topic_models[show_name] = topic_model
@@ -346,8 +346,13 @@ for series, series_verbosity in series_character_stats_dict.items():
 # What did they talk about?
 
 # %%
+# load topic models
 topic_models = loadTopicModels(series_lines_dict)
+#%%
+# get custom labels
 custom_label_collection = getCustomTopicLabels(topic_models)
+#%%
+# get main character topics
 main_character_main_topics = getMainCharacterTopics(series_character_stats_dict, topic_models, series_character_lines, custom_label_collection)
 
 # %%
